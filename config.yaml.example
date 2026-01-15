@@ -1,0 +1,79 @@
+# SecPipe Configuration Example
+# Copy this file to config.yaml and customize for your environment
+
+pipeline:
+  name: my-security-pipeline
+  description: Security telemetry pipeline for production logs
+
+# Log sources to ingest
+sources:
+  # Linux authentication logs
+  - type: auth
+    path: /var/log/auth.log
+    options:
+      year: 2024  # Specify year since syslog doesn't include it
+  
+  # Nginx access logs
+  - type: nginx
+    path: /var/log/nginx/access.log
+  
+  # JSON-formatted application logs
+  # - type: json
+  #   path: /var/log/app/events.json
+  #   options:
+  #     field_map:
+  #       timestamp_fields: ["ts", "@timestamp"]
+  #       username_fields: ["user", "actor"]
+
+# Detection configuration
+detections:
+  # Specific detections to enable (omit to enable all)
+  enabled:
+    - brute_force_ssh
+    - brute_force_web
+    - password_spraying
+    - cron_persistence
+    - ssh_key_persistence
+    - sudoers_modification
+    - unusual_sudo
+    - sudo_failures
+    - log_clearing
+    - history_evasion
+    - security_tool_disable
+  
+  # Minimum severity to report
+  min_severity: low  # low, medium, high, critical
+  
+  # Detection-specific options
+  # options:
+  #   brute_force_ssh:
+  #     threshold: 10
+  #     window_seconds: 300
+
+# Output destinations
+outputs:
+  # JSON Lines file for log aggregation
+  - type: jsonl
+    path: /var/log/secpipe/findings.jsonl
+    append: true
+  
+  # SQLite database for querying
+  - type: sqlite
+    path: /var/lib/secpipe/findings.db
+  
+  # Markdown report for human review
+  - type: markdown
+    path: /var/log/secpipe/daily_report.md
+    title: Daily Security Report
+    include_evidence: true
+  
+  # Webhook for alerting (URL from environment variable)
+  # - type: webhook
+  #   url_env: SECPIPE_WEBHOOK_URL
+  #   format: slack  # or "generic"
+  #   batch: true
+
+# Logging configuration
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  format: json  # or "text"

@@ -1,0 +1,23 @@
+Jan 15 09:55:00 webserver sshd[10001]: Accepted publickey for admin from 10.0.0.1 port 52100 ssh2
+Jan 15 09:55:01 webserver systemd[1]: Started Session 1 of user admin.
+Jan 15 10:00:01 webserver sshd[10101]: Failed password for invalid user admin from 192.168.1.100 port 54321 ssh2
+Jan 15 10:00:02 webserver sshd[10102]: Failed password for invalid user admin from 192.168.1.100 port 54322 ssh2
+Jan 15 10:00:03 webserver sshd[10103]: Failed password for invalid user root from 192.168.1.100 port 54323 ssh2
+Jan 15 10:00:04 webserver sshd[10104]: Failed password for invalid user test from 192.168.1.100 port 54324 ssh2
+Jan 15 10:00:05 webserver sshd[10105]: Failed password for invalid user user from 192.168.1.100 port 54325 ssh2
+Jan 15 10:00:06 webserver sshd[10106]: Failed password for invalid user guest from 192.168.1.100 port 54326 ssh2
+Jan 15 10:00:07 webserver sshd[10107]: Failed password for invalid user oracle from 192.168.1.100 port 54327 ssh2
+Jan 15 10:00:08 webserver sshd[10108]: Failed password for invalid user postgres from 192.168.1.100 port 54328 ssh2
+Jan 15 10:00:09 webserver sshd[10109]: Failed password for invalid user mysql from 192.168.1.100 port 54329 ssh2
+Jan 15 10:00:10 webserver sshd[10110]: Failed password for invalid user ubuntu from 192.168.1.100 port 54330 ssh2
+Jan 15 10:05:00 webserver sshd[10200]: Accepted publickey for deploy from 10.0.0.5 port 22222 ssh2
+Jan 15 10:05:01 webserver systemd[1]: Started Session 2 of user deploy.
+Jan 15 10:10:00 webserver sudo[10300]:   deploy : TTY=pts/0 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx
+Jan 15 10:10:01 webserver systemd[1]: Stopping nginx.service...
+Jan 15 10:10:02 webserver systemd[1]: Starting nginx.service...
+Jan 15 10:10:03 webserver systemd[1]: Started nginx.service.
+Jan 15 10:15:00 webserver crontab[10400]: (suspicious) BEGIN EDIT
+Jan 15 10:15:01 webserver crontab[10400]: (suspicious) REPLACE
+Jan 15 10:15:02 webserver crontab[10400]: (suspicious) END EDIT
+Jan 15 10:20:00 webserver sudo[10500]:   suspicious : TTY=pts/1 ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash
+Jan 15 10:25:00 webserver sshd[10600]: Disconnected from user deploy 10.0.0.5 port 22222

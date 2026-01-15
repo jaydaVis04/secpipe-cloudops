@@ -1,0 +1,322 @@
+Metadata-Version: 2.4
+Name: secpipe
+Version: 0.1.0
+Summary: Security telemetry pipeline for log analysis and detection
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/secpipe
+Project-URL: Documentation, https://github.com/yourusername/secpipe#readme
+Project-URL: Repository, https://github.com/yourusername/secpipe.git
+Project-URL: Issues, https://github.com/yourusername/secpipe/issues
+Keywords: security,logging,detection,siem,telemetry
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security
+Classifier: Topic :: System :: Logging
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: isort>=5.12; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Dynamic: license-file
+
+# SecPipe
+
+A security telemetry pipeline that ingests logs from multiple sources, normalizes events to a common schema, runs rule-based detections, and exports structured findings.
+
+## Overview
+
+SecPipe is designed for security operations workflows where analysts need to process diverse log formats, identify suspicious patterns, and generate actionable findings. The architecture supports pluggable parsers, configurable detection rules, and multiple output sinks.
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Log Sources   │     │    Detection    │     │     Output      │
+│                 │     │     Engine      │     │     Sinks       │
+│  - auth.log     │────▶│                 │────▶│                 │
+│  - nginx access │     │  - Brute Force  │     │  - JSONL File   │
+│  - JSON events  │     │  - Persistence  │     │  - SQLite DB    │
+│  - syslog       │     │  - Privilege    │     │  - Summary MD   │
+│                 │     │  - Anomaly      │     │  - Webhook      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+## Features
+
+- **Multi-source ingestion**: Parse auth logs, web server logs, syslog, and structured JSON events
+- **Common event schema**: All events normalized to a consistent format for detection
+- **Detection engine**: Rule-based detections with severity levels and MITRE ATT&CK mapping
+- **Multiple outputs**: Export findings to JSONL, SQLite, Markdown reports, or webhooks
+- **Extensible architecture**: Add parsers, detections, and outputs without modifying core code
+- **Security-aware**: No secrets in configuration, safe defaults, input validation
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/secpipe.git
+cd secpipe
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
+```
+
+## Quick Start
+
+```bash
+# Ingest logs and run detections
+secpipe ingest --source auth --file /var/log/auth.log
+secpipe detect --rules rules/default.yaml
+secpipe report --format markdown --output findings.md
+
+# Or run the full pipeline
+secpipe run --config config.yaml
+```
+
+## Usage
+
+### Ingesting Logs
+
+```bash
+# Linux authentication logs
+secpipe ingest --source auth --file /var/log/auth.log
+
+# Nginx access logs
+secpipe ingest --source nginx --file /var/log/nginx/access.log
+
+# JSON-formatted events
+secpipe ingest --source json --file events.json
+
+# Syslog
+secpipe ingest --source syslog --file /var/log/syslog
+```
+
+### Running Detections
+
+```bash
+# Run all enabled detections
+secpipe detect
+
+# Run specific detection categories
+secpipe detect --category brute_force,persistence
+
+# Adjust severity threshold
+secpipe detect --min-severity medium
+```
+
+### Generating Reports
+
+```bash
+# Markdown summary
+secpipe report --format markdown --output findings.md
+
+# JSON Lines for downstream processing
+secpipe report --format jsonl --output findings.jsonl
+
+# Export to SQLite for querying
+secpipe report --format sqlite --output findings.db
+```
+
+## Detection Rules
+
+SecPipe includes detections mapped to common attack patterns:
+
+| Detection | Description | MITRE ATT&CK |
+|-----------|-------------|--------------|
+| Brute Force SSH | Multiple failed SSH attempts from single source | T1110.001 |
+| Brute Force Web | Excessive 401/403 responses to single client | T1110.001 |
+| Cron Persistence | New crontab entries or cron.d modifications | T1053.003 |
+| Sudoers Modification | Changes to sudoers file or sudoers.d | T1548.003 |
+| Unusual Sudo | Sudo usage by accounts without prior sudo history | T1548.003 |
+| SSH Key Addition | New authorized_keys entries | T1098.004 |
+| Service Installation | New systemd services or init scripts | T1543.002 |
+| Log Clearing | Truncation or deletion of security logs | T1070.002 |
+
+### Custom Detection Rules
+
+Create custom detections in YAML:
+
+```yaml
+name: custom_brute_force
+description: Detect brute force attempts with custom threshold
+severity: high
+mitre_attack: T1110.001
+
+conditions:
+  event_type: auth_failure
+  group_by: source_ip
+  threshold: 10
+  window_seconds: 300
+
+response:
+  action: alert
+  message: "Brute force detected from {source_ip}: {count} failures in {window}"
+```
+
+## Configuration
+
+Create a `config.yaml` file:
+
+```yaml
+pipeline:
+  name: production-security-pipeline
+  
+sources:
+  - type: auth
+    path: /var/log/auth.log
+    watch: true
+  - type: nginx
+    path: /var/log/nginx/access.log
+    watch: true
+
+detections:
+  enabled:
+    - brute_force_ssh
+    - brute_force_web
+    - cron_persistence
+    - sudoers_modification
+  min_severity: low
+
+outputs:
+  - type: jsonl
+    path: /var/log/secpipe/findings.jsonl
+    rotate: daily
+  - type: sqlite
+    path: /var/lib/secpipe/findings.db
+  - type: webhook
+    url_env: SECPIPE_WEBHOOK_URL  # URL from environment variable
+    
+logging:
+  level: INFO
+  format: json
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=secpipe --cov-report=html
+
+# Run specific test categories
+pytest tests/parsers/
+pytest tests/detections/
+```
+
+### Adding a New Parser
+
+1. Create parser class in `secpipe/parsers/`
+2. Implement the `Parser` interface
+3. Register in `secpipe/parsers/__init__.py`
+4. Add tests in `tests/parsers/`
+
+```python
+from secpipe.parsers.base import Parser
+from secpipe.schema import Event
+
+class MyParser(Parser):
+    name = "myformat"
+    
+    def parse_line(self, line: str) -> Event | None:
+        # Parse logic here
+        return Event(...)
+```
+
+### Adding a New Detection
+
+1. Create detection class in `secpipe/detections/`
+2. Implement the `Detection` interface
+3. Add tests in `tests/detections/`
+
+```python
+from secpipe.detections.base import Detection, Finding
+
+class MyDetection(Detection):
+    name = "my_detection"
+    severity = "medium"
+    mitre_attack = "T1234"
+    
+    def analyze(self, events: list[Event]) -> list[Finding]:
+        # Detection logic here
+        return findings
+```
+
+## Project Structure
+
+```
+secpipe/
+├── secpipe/
+│   ├── __init__.py
+│   ├── cli.py              # Command-line interface
+│   ├── config.py           # Configuration handling
+│   ├── pipeline.py         # Main pipeline orchestration
+│   ├── schema.py           # Event and Finding schemas
+│   ├── parsers/
+│   │   ├── __init__.py
+│   │   ├── base.py         # Parser interface
+│   │   ├── auth.py         # Linux auth.log parser
+│   │   ├── nginx.py        # Nginx access log parser
+│   │   ├── syslog.py       # Syslog parser
+│   │   └── json_events.py  # JSON event parser
+│   ├── detections/
+│   │   ├── __init__.py
+│   │   ├── base.py         # Detection interface
+│   │   ├── brute_force.py  # Brute force detections
+│   │   ├── persistence.py  # Persistence detections
+│   │   ├── privilege.py    # Privilege escalation detections
+│   │   └── defense_evasion.py  # Defense evasion detections
+│   └── outputs/
+│       ├── __init__.py
+│       ├── base.py         # Output interface
+│       ├── jsonl.py        # JSONL output
+│       ├── sqlite.py       # SQLite output
+│       ├── markdown.py     # Markdown report
+│       └── webhook.py      # Webhook output
+├── tests/
+│   ├── conftest.py
+│   ├── parsers/
+│   ├── detections/
+│   └── outputs/
+├── samples/                # Sample log files for testing
+├── rules/                  # Detection rule definitions
+├── docs/                   # Additional documentation
+├── config.yaml.example
+├── requirements.txt
+├── setup.py
+├── pyproject.toml
+└── .github/
+    └── workflows/
+        └── ci.yml          # GitHub Actions CI
+```
+
+## Security Considerations
+
+- Webhook URLs are read from environment variables, never stored in configuration files
+- Input validation on all parsed fields to prevent injection
+- Safe file handling with path validation
+- No execution of parsed content
+- Findings are sanitized before output
+
+## License
+
+MIT License - see LICENSE file for details.
