@@ -6,6 +6,7 @@ Tests for log parsing functionality.
 
 import pytest
 from datetime import datetime
+from pathlib import Path
 
 from secpipe.parsers import (
     ParserRegistry,
@@ -14,6 +15,7 @@ from secpipe.parsers import (
     JSONEventsParser,
     NginxParser,
 )
+from secpipe.pipeline import Pipeline
 from secpipe.schema import EventType
 
 
@@ -291,3 +293,36 @@ class TestCloudFindingsParser:
         assert len(events) == 1
         assert events[0].event_type == EventType.NETWORK_CONNECTION
         assert events[0].extra["issue_type"] == "SSH open to the internet"
+
+    def test_parse_repo_cloud_findings_file(self):
+        """Should parse the modeled multi-cloud findings file used by the project."""
+        parser = CloudFindingsParser({"default_timestamp": "2026-04-06T12:00:00"})
+
+        events = list(parser.parse_file(Path("cloud/cloud_findings.json")))
+
+        assert len(events) == 8
+        assert {event.extra["provider"] for event in events} == {
+            "AWS",
+            "Azure",
+            "GCP",
+            "OCI",
+        }
+        assert {event.extra["environment"] for event in events} == {
+            "production",
+            "development",
+            "staging",
+        }
+
+    def test_pipeline_ingest_cloud_findings(self):
+        """Should ingest cloud findings through the standard SecPipe pipeline path."""
+        pipeline = Pipeline()
+
+        count = pipeline.ingest(
+            "cloud",
+            Path("cloud/cloud_findings.json"),
+            {"default_timestamp": "2026-04-06T12:00:00"},
+        )
+
+        assert count == 8
+        assert len(pipeline.events) == 8
+        assert all(event.source_parser == "cloud" for event in pipeline.events)

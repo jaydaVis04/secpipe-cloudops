@@ -80,15 +80,18 @@ class CloudFindingsParser(Parser):
 
     def _parse_finding(self, finding: dict[str, Any]) -> Event:
         """Convert one cloud finding into a normalized Event."""
-        issue_type = str(finding.get("issue_type", "unknown"))
-        provider = str(finding.get("provider", "unknown"))
-        resource_id = str(finding.get("resource_id", "unknown"))
-        resource_type = str(finding.get("resource_type", "unknown"))
-        owner_team = str(finding.get("owner_team", "unassigned"))
-        environment = str(finding.get("environment", "unknown"))
-        severity = str(finding.get("severity", "low")).lower()
-        details = str(finding.get("details", ""))
-        recommended_action = str(finding.get("recommended_action", ""))
+        issue_type = self._normalize_text(finding.get("issue_type"), "unknown")
+        provider = self._normalize_text(finding.get("provider"), "unknown")
+        resource_id = self._normalize_text(finding.get("resource_id"), "unknown")
+        resource_type = self._normalize_text(finding.get("resource_type"), "unknown")
+        owner_team = self._normalize_text(finding.get("owner_team"), "unassigned")
+        environment = self._normalize_text(finding.get("environment"), "unknown")
+        severity = self._normalize_text(finding.get("severity"), "low").lower()
+        details = self._normalize_text(finding.get("details"), "")
+        recommended_action = self._normalize_text(
+            finding.get("recommended_action"),
+            "",
+        )
 
         raw_line = json.dumps(finding, sort_keys=True)
         timestamp = self._extract_timestamp(finding)
@@ -116,6 +119,17 @@ class CloudFindingsParser(Parser):
                 "recommended_action": recommended_action,
             },
         )
+
+    def _normalize_text(self, value: Any, default: str) -> str:
+        """Normalize JSON values into predictable strings for Event fields."""
+        if value is None:
+            return default
+
+        text = str(value).strip()
+        if not text:
+            return default
+
+        return text
 
     def _extract_timestamp(self, finding: dict[str, Any]) -> datetime:
         """Use a finding timestamp when present, otherwise use ingest time."""
