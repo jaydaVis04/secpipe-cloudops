@@ -41,6 +41,13 @@ class CloudSecurityTriageDetection(Detection):
         "overly broad service account permissions": "identity_exposure",
     }
 
+    SERVICE_CATEGORY_MAP = {
+        "storage_exposure": "storage",
+        "network_exposure": "network",
+        "identity_exposure": "identity",
+        "cloud_misconfiguration": "configuration",
+    }
+
     def analyze(self, events: list[Event]) -> list[Finding]:
         """Convert cloud events into triaged findings."""
         findings = []
@@ -70,11 +77,27 @@ class CloudSecurityTriageDetection(Detection):
         )
 
         severity = self._resolve_severity(event)
-        priority = self.PRIORITY_MAP[severity]
         classification = self.ISSUE_CLASSIFICATION_MAP.get(
             issue_type.lower(),
             "cloud_misconfiguration",
         )
+        service_category = self.SERVICE_CATEGORY_MAP.get(
+            classification,
+            "configuration",
+        )
+        priority = self._resolve_priority(
+            severity=severity,
+            classification=classification,
+            environment=environment,
+        )
+        triage_notes = self._build_triage_notes(
+            provider=provider,
+            resource_type=resource_type,
+            classification=classification,
+            environment=environment,
+            details=details,
+        )
+        owner_queue = self._build_owner_queue(owner_team, provider)
 
         title = f"[{provider}] {issue_type} on {resource_type} {resource_id}"
         description = (
@@ -100,8 +123,12 @@ class CloudSecurityTriageDetection(Detection):
             issue_type=issue_type,
             environment=environment,
             owner_team=owner_team,
+            owner_queue=owner_queue,
             classification=classification,
+            service_category=service_category,
             priority=priority,
+            triage_status="ready_for_remediation",
+            triage_notes=triage_notes,
             remediation_guidance=remediation_guidance,
             workflow_stage="triage",
         )
@@ -152,3 +179,49 @@ class CloudSecurityTriageDetection(Detection):
             )
 
         return guidance
+
+    def _resolve_priority(
+        self,
+        severity: Severity,
+        classification: str,
+        environment: str,
+    ) -> str:
+        """Resolve a simple response priority for the triage workflow."""
+        priority = self.PRIORITY_MAP[severity]
+
+        if classification == "network_exposure" and environment.lower() == "production":
+            return self._upgrade_priority(priority)
+
+        return priority
+
+    def _upgrade_priority(self, priority: str) -> str:
+        """Move a priority up one level when the finding needs faster handling."""
+        priority_order = ["P1", "P2", "P3", "P4"]
+        current_index = priority_order.index(priority)
+        return priority_order[max(0, current_index - 1)]
+
+    def _build_owner_queue(self, owner_team: str, provider: str) -> str:
+        """Create a simple routing queue label for the remediation owner."""
+        normalized_team = owner_team.replace("_", "-").strip() or "unassigned"
+        normalized_provider = provider.lower().strip() or "cloud"
+        return f"{normalized_team}-{normalized_provider}"
+
+    def _build_triage_notes(
+        self,
+        provider: str,
+        resource_type: str,
+        classification: str,
+        environment: str,
+        details: str,
+    ) -> list[str]:
+        """Build concise analyst notes for the triage handoff."""
+        notes = [
+            f"Provider context: {provider} {resource_type}",
+            f"Triage classification: {classification}",
+            f"Environment impact: {environment}",
+        ]
+
+        if details:
+            notes.append(f"Observed issue: {details}")
+
+        return notes

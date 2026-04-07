@@ -358,8 +358,12 @@ class TestCloudSecurityTriageDetection:
         assert finding.detection_name == "cloud_security_triage"
         assert finding.severity == Severity.CRITICAL
         assert finding.extra["classification"] == "storage_exposure"
+        assert finding.extra["service_category"] == "storage"
         assert finding.extra["priority"] == "P1"
         assert finding.extra["owner_team"] == "data-platform"
+        assert finding.extra["owner_queue"] == "data-platform-aws"
+        assert finding.extra["triage_status"] == "ready_for_remediation"
+        assert "Provider context: AWS S3 Bucket" in finding.extra["triage_notes"]
         assert "Block public access." in finding.recommendations
 
     def test_ignore_non_cloud_events(self):
@@ -375,3 +379,36 @@ class TestCloudSecurityTriageDetection:
         findings = detection.analyze([event])
 
         assert findings == []
+
+    def test_raise_priority_for_production_network_exposure(self):
+        """Should prioritize production network exposure one level higher."""
+        detection = CloudSecurityTriageDetection()
+        event = Event(
+            timestamp=datetime.now(),
+            event_type=EventType.NETWORK_CONNECTION,
+            source_parser="cloud",
+            raw_line='{"provider":"Azure"}',
+            hostname="azure",
+            file_path="nsg-prod-01",
+            extra={
+                "provider": "Azure",
+                "resource_id": "nsg-prod-01",
+                "resource_type": "Network Security Group",
+                "issue_type": "SSH open to the internet",
+                "severity": "high",
+                "owner_team": "network-security",
+                "environment": "production",
+                "details": "TCP/22 open from 0.0.0.0/0.",
+                "recommended_action": "Restrict SSH.",
+            },
+        )
+
+        findings = detection.analyze([event])
+
+        assert len(findings) == 1
+        finding = findings[0]
+        assert finding.severity == Severity.HIGH
+        assert finding.extra["classification"] == "network_exposure"
+        assert finding.extra["service_category"] == "network"
+        assert finding.extra["priority"] == "P1"
+        assert finding.extra["owner_queue"] == "network-security-azure"
