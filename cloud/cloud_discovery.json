@@ -1,0 +1,46 @@
+[
+  {
+    "provider": "AWS",
+    "resource_id": "s3-media-assets-demo",
+    "resource_type": "S3 Bucket",
+    "issue_type": "Public Bucket",
+    "severity": "High",
+    "owner_team": "media-platform-team",
+    "environment": "production",
+    "details": "Bucket allows public read access and may expose sensitive media assets.",
+    "recommended_action": "Block public access, review bucket policy, and confirm intended sharing settings."
+  },
+  {
+    "provider": "Azure",
+    "resource_id": "nsg-prod-web-01",
+    "resource_type": "NSG",
+    "issue_type": "SSH Open to Internet",
+    "severity": "High",
+    "owner_team": "network-security-team",
+    "environment": "production",
+    "details": "Inbound rule allows TCP/22 from 0.0.0.0/0.",
+    "recommended_action": "Restrict SSH to approved admin IP ranges or remove external access."
+  },
+  {
+    "provider": "GCP",
+    "resource_id": "svc-build-automation",
+    "resource_type": "Service Account",
+    "issue_type": "Excessive IAM Permissions",
+    "severity": "Medium",
+    "owner_team": "devops-team",
+    "environment": "development",
+    "details": "Service account has broad project-level permissions beyond its job function.",
+    "recommended_action": "Reduce role scope according to least privilege and review account usage."
+  },
+  {
+    "provider": "OCI",
+    "resource_id": "prod-security-list-01",
+    "resource_type": "Security List",
+    "issue_type": "RDP Exposed to Internet",
+    "severity": "High",
+    "owner_team": "infra-team",
+    "environment": "production",
+    "details": "TCP/3389 is exposed publicly, increasing remote access risk.",
+    "recommended_action": "Limit RDP access to trusted IP space or remove public exposure entirely."
+  }
+]
