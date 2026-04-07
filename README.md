@@ -1,286 +1,267 @@
-# SecPipe
+# SecPipe-CloudOps
 
-A security telemetry pipeline that ingests logs from multiple sources, normalizes events to a common schema, runs rule-based detections, and exports structured findings.
+SecPipe-CloudOps is an extension of SecPipe, an existing Python security telemetry pipeline. The original SecPipe project ingests logs, normalizes events into a shared schema, runs detections, and exports structured findings. This version builds on that foundation and extends it into a simple cloud security operations workflow.
 
-## Overview
+The goal is not to simulate a full enterprise platform. The goal is to show a realistic and explainable flow for multi-cloud findings:
 
-SecPipe is designed for security operations workflows where analysts need to process diverse log formats, identify suspicious patterns, and generate actionable findings. The architecture supports pluggable parsers, configurable detection rules, and multiple output sinks.
+`input -> normalize -> triage -> prioritize -> route to owner -> recommend remediation -> document -> deploy`
 
+## What SecPipe Originally Was
+
+SecPipe started as a modular security telemetry pipeline with:
+
+- parser modules for different log sources
+- a shared `Event` schema
+- a detection engine that produces `Finding` records
+- output modules for structured reporting
+
+Those core ideas are still intact in this project. SecPipe-CloudOps reuses the same parser, pipeline, CLI, and output patterns instead of replacing them.
+
+## What SecPipe-CloudOps Adds
+
+SecPipe-CloudOps adds a cloud security triage workflow on top of the original SecPipe core:
+
+- modeled cloud findings across AWS, GCP, Azure, and OCI
+- a cloud findings parser that converts posture findings into SecPipe events
+- cloud triage logic for classification, prioritization, and owner routing
+- remediation ticket generation
+- SOP and KB documentation in an internal-team style
+- Docker packaging
+- minimal Kubernetes manifests
+
+## Project Story
+
+This project is meant to support a credible interview explanation:
+
+`I originally built SecPipe as a telemetry and detection pipeline. Then I extended it into SecPipe-CloudOps, where I modeled cloud security findings across AWS, GCP, Azure, and OCI, added triage and remediation workflows, mapped issues to owners, documented SOPs and knowledge base pages, and packaged the workflow for containerized and Kubernetes-based deployment.`
+
+## Architecture Overview
+
+```text
+cloud/cloud_findings.json
+        |
+        v
+secpipe.parsers.cloud_findings
+        |
+        v
+Normalized SecPipe Event objects
+        |
+        v
+secpipe.detections.cloud_triage
+        |
+        v
+Structured triage Finding objects
+        |
+        v
+secpipe.tickets.TicketGenerator
+        |
+        v
+output/remediation_tickets.json
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Log Sources   │     │    Detection    │     │     Output      │
-│                 │     │     Engine      │     │     Sinks       │
-│  - auth.log     │────▶│                 │────▶│                 │
-│  - nginx access │     │  - Brute Force  │     │  - JSONL File   │
-│  - JSON events  │     │  - Persistence  │     │  - SQLite DB    │
-│  - syslog       │     │  - Privilege    │     │  - Summary MD   │
-│                 │     │  - Anomaly      │     │  - Webhook      │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+
+## Cloud Security Themes Covered
+
+The sample findings and triage logic focus on practical cloud security issues:
+
+- public storage bucket exposure
+- excessive IAM permissions
+- overly broad service account roles
+- SSH open to the internet
+- RDP exposed publicly
+- insecure network paths
+- misconfigured firewall-style controls
+- ownership ambiguity
+- remediation tracking and documentation
+
+These are modeled lightly across four providers:
+
+- AWS
+- GCP
+- Azure
+- OCI
+
+The project keeps the concepts consistent across providers without pretending to implement deep real-cloud integrations.
+
+## Repo Structure
+
+```text
+secpipe/
+  cli.py
+  pipeline.py
+  schema.py
+  parsers/
+  detections/
+  outputs/
+  tickets.py
+cloud/
+  cloud_findings.json
+docs/
+  SOP_public_bucket.md
+  SOP_excessive_iam.md
+  KB_triage_workflow.md
+  KB_identifying_resource_owners.md
+  ticket_template.md
+k8s/
+  namespace.yaml
+  configmap.yaml
+  deployment.yaml
+  service.yaml
+output/
+  cloud_events.jsonl
+  cloud_triage_findings.jsonl
+  remediation_tickets.json
+Dockerfile
 ```
 
-## Features
-
-- **Multi-source ingestion**: Parse auth logs, web server logs, syslog, and structured JSON events
-- **Common event schema**: All events normalized to a consistent format for detection
-- **Detection engine**: Rule-based detections with severity levels and MITRE ATT&CK mapping
-- **Multiple outputs**: Export findings to JSONL, SQLite, Markdown reports, or webhooks
-- **Extensible architecture**: Add parsers, detections, and outputs without modifying core code
-- **Security-aware**: No secrets in configuration, safe defaults, input validation
-
-## Installation
+## Local Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/jaydaVis04/secpipe.git
-cd secpipe
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# Install in development mode
 pip install -e .
 ```
 
-## Quick Start
+## How to Run Locally
+
+### 1. Ingest the modeled cloud findings
 
 ```bash
-# Ingest logs and run detections
-secpipe ingest --source auth --file /var/log/auth.log
-secpipe detect --rules rules/default.yaml
-secpipe report --format markdown --output findings.md
-
-# Or run the full pipeline
-secpipe run --config config.yaml
+.venv/bin/python -m secpipe.cli ingest --source cloud --file cloud/cloud_findings.json --output output/cloud_events.jsonl
 ```
 
-## Usage
-
-### Ingesting Logs
+### 2. Run cloud triage
 
 ```bash
-# Linux authentication logs
-secpipe ingest --source auth --file /var/log/auth.log
-
-# Nginx access logs
-secpipe ingest --source nginx --file /var/log/nginx/access.log
-
-# JSON-formatted events
-secpipe ingest --source json --file events.json
-
-# Syslog
-secpipe ingest --source syslog --file /var/log/syslog
+.venv/bin/python -m secpipe.cli triage --events output/cloud_events.jsonl --output output/cloud_triage_findings.jsonl
 ```
 
-### Running Detections
+### 3. Generate remediation tickets
 
 ```bash
-# Run all enabled detections
-secpipe detect
-
-# Run specific detection categories
-secpipe detect --category brute_force,persistence
-
-# Adjust severity threshold
-secpipe detect --min-severity medium
+.venv/bin/python -m secpipe.cli tickets --findings output/cloud_triage_findings.jsonl --output output/remediation_tickets.json
 ```
 
-### Generating Reports
+### 4. Review the outputs
+
+- [output/cloud_events.jsonl](/Users/jay/Code/secpipe-cloudops/output/cloud_events.jsonl)
+- [output/cloud_triage_findings.jsonl](/Users/jay/Code/secpipe-cloudops/output/cloud_triage_findings.jsonl)
+- [output/remediation_tickets.json](/Users/jay/Code/secpipe-cloudops/output/remediation_tickets.json)
+
+## How the Cloud Triage Workflow Works
+
+### Input
+
+[cloud/cloud_findings.json](/Users/jay/Code/secpipe-cloudops/cloud/cloud_findings.json) contains realistic sample findings. Each record includes:
+
+- `provider`
+- `resource_id`
+- `resource_type`
+- `issue_type`
+- `severity`
+- `owner_team`
+- `environment`
+- `details`
+- `recommended_action`
+
+### Normalize
+
+[secpipe/parsers/cloud_findings.py](/Users/jay/Code/secpipe-cloudops/secpipe/parsers/cloud_findings.py) converts each cloud finding into the existing SecPipe `Event` schema. Cloud-specific context is stored in `event.extra` so the project can reuse the original structure cleanly.
+
+### Triage
+
+[secpipe/detections/cloud_triage.py](/Users/jay/Code/secpipe-cloudops/secpipe/detections/cloud_triage.py) adds:
+
+- classification
+- service category
+- severity and priority handling
+- owner routing
+- triage notes
+- remediation guidance
+
+### Remediation
+
+[secpipe/tickets.py](/Users/jay/Code/secpipe-cloudops/secpipe/tickets.py) converts triage findings into ticket-like records with fields similar to Jira or ServiceNow, without integrating with those platforms directly.
+
+### Documentation
+
+The markdown files in [docs](/Users/jay/Code/secpipe-cloudops/docs) provide SOP and KB coverage for repeatable analyst response and remediation tracking.
+
+## Docker
+
+The project includes a simple [Dockerfile](/Users/jay/Code/secpipe-cloudops/Dockerfile) that installs the package and runs the existing CLI.
+
+### Build
 
 ```bash
-# Markdown summary
-secpipe report --format markdown --output findings.md
-
-# JSON Lines for downstream processing
-secpipe report --format jsonl --output findings.jsonl
-
-# Export to SQLite for querying
-secpipe report --format sqlite --output findings.db
+docker build -t secpipe-cloudops:latest .
 ```
 
-## Detection Rules
-
-SecPipe includes detections mapped to common attack patterns:
-
-| Detection | Description | MITRE ATT&CK |
-|-----------|-------------|--------------|
-| Brute Force SSH | Multiple failed SSH attempts from single source | T1110.001 |
-| Brute Force Web | Excessive 401/403 responses to single client | T1110.001 |
-| Cron Persistence | New crontab entries or cron.d modifications | T1053.003 |
-| Sudoers Modification | Changes to sudoers file or sudoers.d | T1548.003 |
-| Unusual Sudo | Sudo usage by accounts without prior sudo history | T1548.003 |
-| SSH Key Addition | New authorized_keys entries | T1098.004 |
-| Service Installation | New systemd services or init scripts | T1543.002 |
-| Log Clearing | Truncation or deletion of security logs | T1070.002 |
-
-### Custom Detection Rules
-
-Create custom detections in YAML:
-
-```yaml
-name: custom_brute_force
-description: Detect brute force attempts with custom threshold
-severity: high
-mitre_attack: T1110.001
-
-conditions:
-  event_type: auth_failure
-  group_by: source_ip
-  threshold: 10
-  window_seconds: 300
-
-response:
-  action: alert
-  message: "Brute force detected from {source_ip}: {count} failures in {window}"
-```
-
-## Configuration
-
-Create a `config.yaml` file:
-
-```yaml
-pipeline:
-  name: production-security-pipeline
-  
-sources:
-  - type: auth
-    path: /var/log/auth.log
-    watch: true
-  - type: nginx
-    path: /var/log/nginx/access.log
-    watch: true
-
-detections:
-  enabled:
-    - brute_force_ssh
-    - brute_force_web
-    - cron_persistence
-    - sudoers_modification
-  min_severity: low
-
-outputs:
-  - type: jsonl
-    path: /var/log/secpipe/findings.jsonl
-    rotate: daily
-  - type: sqlite
-    path: /var/lib/secpipe/findings.db
-  - type: webhook
-    url_env: SECPIPE_WEBHOOK_URL  # URL from environment variable
-    
-logging:
-  level: INFO
-  format: json
-```
-
-## Development
-
-### Running Tests
+### Run
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=secpipe --cov-report=html
-
-# Run specific test categories
-pytest tests/parsers/
-pytest tests/detections/
+docker run --rm secpipe-cloudops:latest --help
 ```
 
-### Adding a New Parser
+Example workflow command inside the container:
 
-1. Create parser class in `secpipe/parsers/`
-2. Implement the `Parser` interface
-3. Register in `secpipe/parsers/__init__.py`
-4. Add tests in `tests/parsers/`
-
-```python
-from secpipe.parsers.base import Parser
-from secpipe.schema import Event
-
-class MyParser(Parser):
-    name = "myformat"
-    
-    def parse_line(self, line: str) -> Event | None:
-        # Parse logic here
-        return Event(...)
+```bash
+docker run --rm secpipe-cloudops:latest ingest --source cloud --file cloud/cloud_findings.json --output output/cloud_events.jsonl
 ```
 
-### Adding a New Detection
+Docker is used here to package the workflow consistently. It is not meant to imply a large production deployment model.
 
-1. Create detection class in `secpipe/detections/`
-2. Implement the `Detection` interface
-3. Add tests in `tests/detections/`
+## Kubernetes
 
-```python
-from secpipe.detections.base import Detection, Finding
+The repository includes minimal Kubernetes manifests in [k8s](/Users/jay/Code/secpipe-cloudops/k8s):
 
-class MyDetection(Detection):
-    name = "my_detection"
-    severity = "medium"
-    mitre_attack = "T1234"
-    
-    def analyze(self, events: list[Event]) -> list[Finding]:
-        # Detection logic here
-        return findings
+- `namespace.yaml`
+- `configmap.yaml`
+- `deployment.yaml`
+- `service.yaml`
+
+These manifests are intentionally simple. They show how the containerized workflow could be orchestrated with a Namespace, ConfigMap, Deployment, Pod, and Service. The Kubernetes layer is not the main purpose of the project.
+
+Example apply sequence:
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
 ```
 
-## Project Structure
+## Documentation Artifacts
 
-```
-secpipe/
-├── secpipe/
-│   ├── __init__.py
-│   ├── cli.py              # Command-line interface
-│   ├── config.py           # Configuration handling
-│   ├── pipeline.py         # Main pipeline orchestration
-│   ├── schema.py           # Event and Finding schemas
-│   ├── parsers/
-│   │   ├── __init__.py
-│   │   ├── base.py         # Parser interface
-│   │   ├── auth.py         # Linux auth.log parser
-│   │   ├── nginx.py        # Nginx access log parser
-│   │   ├── syslog.py       # Syslog parser
-│   │   └── json_events.py  # JSON event parser
-│   ├── detections/
-│   │   ├── __init__.py
-│   │   ├── base.py         # Detection interface
-│   │   ├── brute_force.py  # Brute force detections
-│   │   ├── persistence.py  # Persistence detections
-│   │   ├── privilege.py    # Privilege escalation detections
-│   │   └── defense_evasion.py  # Defense evasion detections
-│   └── outputs/
-│       ├── __init__.py
-│       ├── base.py         # Output interface
-│       ├── jsonl.py        # JSONL output
-│       ├── sqlite.py       # SQLite output
-│       ├── markdown.py     # Markdown report
-│       └── webhook.py      # Webhook output
-├── tests/
-│   ├── conftest.py
-│   ├── parsers/
-│   ├── detections/
-│   └── outputs/
-├── samples/                # Sample log files for testing
-├── rules/                  # Detection rule definitions
-├── docs/                   # Additional documentation
-├── config.yaml.example
-├── requirements.txt
-├── setup.py
-├── pyproject.toml
-└── .github/
-    └── workflows/
-        └── ci.yml          # GitHub Actions CI
-```
+The docs are written in a practical internal-team style:
 
-## Security Considerations
+- [docs/SOP_public_bucket.md](/Users/jay/Code/secpipe-cloudops/docs/SOP_public_bucket.md)
+- [docs/SOP_excessive_iam.md](/Users/jay/Code/secpipe-cloudops/docs/SOP_excessive_iam.md)
+- [docs/KB_triage_workflow.md](/Users/jay/Code/secpipe-cloudops/docs/KB_triage_workflow.md)
+- [docs/KB_identifying_resource_owners.md](/Users/jay/Code/secpipe-cloudops/docs/KB_identifying_resource_owners.md)
+- [docs/ticket_template.md](/Users/jay/Code/secpipe-cloudops/docs/ticket_template.md)
 
-- Webhook URLs are read from environment variables, never stored in configuration files
-- Input validation on all parsed fields to prevent injection
-- Safe file handling with path validation
-- No execution of parsed content
-- Findings are sanitized before output
+## What This Demonstrates In An Interview
+
+This project supports an honest explanation that you:
+
+- extended an existing Python security pipeline instead of rebuilding it
+- modeled findings across AWS, GCP, Azure, and OCI
+- understand basic IAM and least-privilege risk themes
+- understand basic cloud network exposure themes
+- can triage posture findings into actionable remediation steps
+- can route issues to owners and document follow-up
+- can package a Python workflow with Docker
+- understand the role Kubernetes can play in container orchestration
+
+## Scope and Honesty
+
+This project does not claim:
+
+- deep production multi-cloud deployment experience
+- full enterprise CSPM coverage
+- real Jira or ServiceNow integration
+- real cloud control-plane automation
+- advanced Kubernetes platform engineering
+
+It is intentionally small, modular, and explainable.
