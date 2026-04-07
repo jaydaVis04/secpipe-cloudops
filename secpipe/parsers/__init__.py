@@ -6,6 +6,7 @@ Provides log parsers for various sources:
 - nginx: Nginx access logs
 - syslog: Standard syslog format
 - json: JSON-formatted events
+- cloud: Modeled cloud security findings
 
 Usage:
     from secpipe.parsers import ParserRegistry
@@ -21,6 +22,7 @@ from secpipe.parsers.auth import AuthLogParser
 from secpipe.parsers.nginx import NginxParser
 from secpipe.parsers.syslog import SyslogParser
 from secpipe.parsers.json_events import JSONEventsParser
+from secpipe.parsers.cloud_findings import CloudFindingsParser
 
 __all__ = [
     "Parser",
@@ -29,4 +31,5 @@ __all__ = [
     "NginxParser",
     "SyslogParser",
     "JSONEventsParser",
+    "CloudFindingsParser",
 ]

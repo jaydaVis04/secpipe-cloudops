@@ -7,7 +7,13 @@ Tests for log parsing functionality.
 import pytest
 from datetime import datetime
 
-from secpipe.parsers import ParserRegistry, AuthLogParser, NginxParser, JSONEventsParser
+from secpipe.parsers import (
+    ParserRegistry,
+    AuthLogParser,
+    CloudFindingsParser,
+    JSONEventsParser,
+    NginxParser,
+)
 from secpipe.schema import EventType
 
 
@@ -21,6 +27,7 @@ class TestParserRegistry:
         assert "nginx" in parsers
         assert "json" in parsers
         assert "syslog" in parsers
+        assert "cloud" in parsers
     
     def test_create_parser(self):
         """Should create parser by name."""
@@ -224,3 +231,63 @@ class TestJSONEventsParser:
         
         assert event is not None
         assert event.extra.get("custom_field") == "custom_value"
+
+
+class TestCloudFindingsParser:
+    """Tests for cloud findings parser."""
+
+    def test_parse_single_cloud_finding(self):
+        """Should convert a cloud finding into a normalized event."""
+        parser = CloudFindingsParser({"default_timestamp": "2026-04-06T12:00:00"})
+        line = """
+        {
+          "provider": "AWS",
+          "resource_id": "arn:aws:s3:::customer-export-prod",
+          "resource_type": "S3 Bucket",
+          "issue_type": "Public storage bucket",
+          "severity": "critical",
+          "owner_team": "data-platform",
+          "environment": "production",
+          "details": "Bucket is public.",
+          "recommended_action": "Block public access."
+        }
+        """
+
+        event = parser.parse_line(line)
+
+        assert event is not None
+        assert event.event_type == EventType.CONFIG_CHANGE
+        assert event.source_parser == "cloud"
+        assert event.hostname == "aws"
+        assert event.file_path == "arn:aws:s3:::customer-export-prod"
+        assert event.extra["provider"] == "AWS"
+        assert event.extra["owner_team"] == "data-platform"
+        assert event.extra["severity"] == "critical"
+
+    def test_parse_network_finding_as_network_event(self, tmp_path):
+        """Should map exposed remote access issues to network events."""
+        parser = CloudFindingsParser({"default_timestamp": "2026-04-06T12:00:00"})
+        findings_file = tmp_path / "cloud_findings.json"
+        findings_file.write_text(
+            """
+            [
+              {
+                "provider": "Azure",
+                "resource_id": "nsg-prod-01",
+                "resource_type": "Network Security Group",
+                "issue_type": "SSH open to the internet",
+                "severity": "high",
+                "owner_team": "network-security",
+                "environment": "production",
+                "details": "TCP/22 open to all sources.",
+                "recommended_action": "Restrict SSH."
+              }
+            ]
+            """.strip()
+        )
+
+        events = list(parser.parse_file(findings_file))
+
+        assert len(events) == 1
+        assert events[0].event_type == EventType.NETWORK_CONNECTION
+        assert events[0].extra["issue_type"] == "SSH open to the internet"

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 SecPipe Event and Finding Schema
 
