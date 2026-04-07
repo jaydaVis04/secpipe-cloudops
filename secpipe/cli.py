@@ -88,6 +88,30 @@ def main():
         default=Path("findings.jsonl"),
         help="Output file for findings",
     )
+
+    # Triage command
+    triage_parser = subparsers.add_parser(
+        "triage",
+        help="Run cloud triage on normalized events",
+    )
+    triage_parser.add_argument(
+        "--events", "-e",
+        type=Path,
+        default=Path("events.jsonl"),
+        help="Events file to analyze",
+    )
+    triage_parser.add_argument(
+        "--min-severity",
+        choices=["low", "medium", "high", "critical"],
+        default="low",
+        help="Minimum severity to report",
+    )
+    triage_parser.add_argument(
+        "--output", "-o",
+        type=Path,
+        default=Path("cloud_triage_findings.jsonl"),
+        help="Output file for triage findings",
+    )
     
     # Report command
     report_parser = subparsers.add_parser(
@@ -158,6 +182,8 @@ def main():
             return cmd_ingest(args)
         elif args.command == "detect":
             return cmd_detect(args)
+        elif args.command == "triage":
+            return cmd_triage(args)
         elif args.command == "report":
             return cmd_report(args)
         elif args.command == "list":
@@ -246,6 +272,37 @@ def cmd_detect(args) -> int:
             f.write(finding.to_json() + "\n")
     
     print(f"Found {len(findings)} finding(s)")
+    print(f"Findings written to {args.output}")
+    return 0
+
+
+def cmd_triage(args) -> int:
+    """Run cloud triage detection on normalized events."""
+    import json
+
+    from secpipe.detections import DetectionEngine
+    from secpipe.schema import Event
+
+    events = []
+    with open(args.events, "r") as f:
+        for line in f:
+            if line.strip():
+                events.append(Event.from_dict(json.loads(line)))
+
+    print(f"Loaded {len(events)} events")
+
+    detection = DetectionRegistry.create("cloud_security_triage")
+    engine = DetectionEngine(
+        detections=[detection],
+        min_severity=Severity(args.min_severity),
+    )
+    findings = engine.run(events)
+
+    with open(args.output, "w") as f:
+        for finding in findings:
+            f.write(finding.to_json() + "\n")
+
+    print(f"Triaged {len(findings)} finding(s)")
     print(f"Findings written to {args.output}")
     return 0
 

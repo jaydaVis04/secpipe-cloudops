@@ -6,6 +6,7 @@ Provides security detections organized by MITRE ATT&CK tactics:
 - persistence: Maintaining access via cron, SSH keys, services
 - privilege: Privilege escalation via sudo abuse
 - defense_evasion: Log clearing and security tool tampering
+- cloud triage: Multi-cloud posture triage and routing
 
 Usage:
     from secpipe.detections import DetectionRegistry, DetectionEngine
@@ -47,6 +48,7 @@ from secpipe.detections.defense_evasion import (
     HistoryEvasionDetection,
     SecurityToolDisableDetection,
 )
+from secpipe.detections.cloud_triage import CloudSecurityTriageDetection
 
 __all__ = [
     "Detection",
@@ -65,4 +67,5 @@ __all__ = [
     "LogClearingDetection",
     "HistoryEvasionDetection",
     "SecurityToolDisableDetection",
+    "CloudSecurityTriageDetection",
 ]

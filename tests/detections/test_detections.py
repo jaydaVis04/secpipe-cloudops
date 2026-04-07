@@ -12,6 +12,7 @@ from secpipe.detections import (
     DetectionEngine,
     BruteForceSSHDetection,
     BruteForceWebDetection,
+    CloudSecurityTriageDetection,
     PasswordSprayingDetection,
     CronPersistenceDetection,
     UnusualSudoDetection,
@@ -30,6 +31,7 @@ class TestDetectionRegistry:
         assert "brute_force_web" in detections
         assert "cron_persistence" in detections
         assert "unusual_sudo" in detections
+        assert "cloud_security_triage" in detections
     
     def test_create_detection(self):
         """Should create detection by name."""
@@ -321,3 +323,55 @@ class TestDetectionEngine:
             severities = [f.severity for f in findings]
             for i in range(len(severities) - 1):
                 assert severities[i] >= severities[i + 1]
+
+
+class TestCloudSecurityTriageDetection:
+    """Tests for cloud security triage."""
+
+    def test_triage_cloud_event(self):
+        """Should classify and prioritize a cloud finding."""
+        detection = CloudSecurityTriageDetection()
+        event = Event(
+            timestamp=datetime.now(),
+            event_type=EventType.CONFIG_CHANGE,
+            source_parser="cloud",
+            raw_line='{"provider":"AWS"}',
+            hostname="aws",
+            file_path="arn:aws:s3:::customer-export-prod",
+            extra={
+                "provider": "AWS",
+                "resource_id": "arn:aws:s3:::customer-export-prod",
+                "resource_type": "S3 Bucket",
+                "issue_type": "Public storage bucket",
+                "severity": "critical",
+                "owner_team": "data-platform",
+                "environment": "production",
+                "details": "Bucket is publicly accessible.",
+                "recommended_action": "Block public access.",
+            },
+        )
+
+        findings = detection.analyze([event])
+
+        assert len(findings) == 1
+        finding = findings[0]
+        assert finding.detection_name == "cloud_security_triage"
+        assert finding.severity == Severity.CRITICAL
+        assert finding.extra["classification"] == "storage_exposure"
+        assert finding.extra["priority"] == "P1"
+        assert finding.extra["owner_team"] == "data-platform"
+        assert "Block public access." in finding.recommendations
+
+    def test_ignore_non_cloud_events(self):
+        """Should ignore non-cloud events."""
+        detection = CloudSecurityTriageDetection()
+        event = Event(
+            timestamp=datetime.now(),
+            event_type=EventType.AUTH_FAILURE,
+            source_parser="auth",
+            raw_line="sshd failed password",
+        )
+
+        findings = detection.analyze([event])
+
+        assert findings == []
