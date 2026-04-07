@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secpipe-cloudops-config
+  namespace: secpipe-cloudops
+data:
+  CLOUD_FINDINGS_FILE: "cloud/cloud_findings.json"
+  EVENTS_FILE: "output/cloud_events.jsonl"
+  TRIAGE_FILE: "output/cloud_triage_findings.jsonl"
+  TICKETS_FILE: "output/remediation_tickets.json"
+  SERVICE_PORT: "8000"

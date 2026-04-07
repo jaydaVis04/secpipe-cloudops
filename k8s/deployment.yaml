@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secpipe-cloudops
+  namespace: secpipe-cloudops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secpipe-cloudops
+  template:
+    metadata:
+      labels:
+        app: secpipe-cloudops
+    spec:
+      containers:
+        - name: secpipe-cloudops
+          image: secpipe-cloudops:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: secpipe-cloudops-config
+          command: ["/bin/sh", "-c"]
+          args:
+            - >
+              python -m secpipe.cli ingest --source cloud --file "$CLOUD_FINDINGS_FILE" --output "$EVENTS_FILE" &&
+              python -m secpipe.cli triage --events "$EVENTS_FILE" --output "$TRIAGE_FILE" &&
+              python -m secpipe.cli tickets --findings "$TRIAGE_FILE" --output "$TICKETS_FILE" &&
+              python -m http.server "$SERVICE_PORT" --directory output
+          ports:
+            - containerPort: 8000
+              name: http
