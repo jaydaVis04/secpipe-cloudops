@@ -28,6 +28,10 @@ class RemediationTicket:
     recommended_action: str
     status: str
     escalation_path: str
+    resource_type: str
+    classification: str
+    service_category: str
+    owner_queue: str
 
     def to_dict(self) -> dict[str, str]:
         """Serialize the ticket to a dictionary."""
@@ -47,10 +51,18 @@ class TicketGenerator:
         """Build a single remediation ticket from a finding."""
         provider = str(finding.extra.get("provider", "unknown"))
         resource_id = str(finding.extra.get("resource_id", "unknown"))
+        resource_type = str(finding.extra.get("resource_type", "unknown"))
         issue_type = str(finding.extra.get("issue_type", finding.title))
         priority = str(finding.extra.get("priority", "P4"))
         owner_team = str(finding.extra.get("owner_team", "unassigned"))
+        owner_queue = str(finding.extra.get("owner_queue", owner_team))
         environment = str(finding.extra.get("environment", "unknown"))
+        classification = str(
+            finding.extra.get("classification", "cloud_misconfiguration")
+        )
+        service_category = str(
+            finding.extra.get("service_category", "configuration")
+        )
         description = finding.description
         recommended_action = self._get_recommended_action(finding)
 
@@ -71,6 +83,10 @@ class TicketGenerator:
                 owner_team=owner_team,
                 environment=environment,
             ),
+            resource_type=resource_type,
+            classification=classification,
+            service_category=service_category,
+            owner_queue=owner_queue,
         )
 
     def build_tickets(self, findings: list[Finding]) -> list[RemediationTicket]:
