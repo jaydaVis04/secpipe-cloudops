@@ -112,6 +112,24 @@ def main():
         default=Path("cloud_triage_findings.jsonl"),
         help="Output file for triage findings",
     )
+
+    # Tickets command
+    tickets_parser = subparsers.add_parser(
+        "tickets",
+        help="Generate remediation tickets from triage findings",
+    )
+    tickets_parser.add_argument(
+        "--findings", "-f",
+        type=Path,
+        default=Path("cloud_triage_findings.jsonl"),
+        help="Triage findings file to convert into tickets",
+    )
+    tickets_parser.add_argument(
+        "--output", "-o",
+        type=Path,
+        default=Path("output/remediation_tickets.json"),
+        help="Output file for remediation tickets",
+    )
     
     # Report command
     report_parser = subparsers.add_parser(
@@ -184,6 +202,8 @@ def main():
             return cmd_detect(args)
         elif args.command == "triage":
             return cmd_triage(args)
+        elif args.command == "tickets":
+            return cmd_tickets(args)
         elif args.command == "report":
             return cmd_report(args)
         elif args.command == "list":
@@ -304,6 +324,31 @@ def cmd_triage(args) -> int:
 
     print(f"Triaged {len(findings)} finding(s)")
     print(f"Findings written to {args.output}")
+    return 0
+
+
+def cmd_tickets(args) -> int:
+    """Generate structured remediation tickets from findings."""
+    import json
+
+    from secpipe.schema import Finding
+    from secpipe.tickets import TicketGenerator
+
+    findings = []
+    with open(args.findings, "r") as f:
+        for line in f:
+            if line.strip():
+                findings.append(Finding.from_dict(json.loads(line)))
+
+    generator = TicketGenerator()
+    tickets = generator.build_tickets(findings)
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump([ticket.to_dict() for ticket in tickets], f, indent=2)
+
+    print(f"Generated {len(tickets)} remediation ticket(s)")
+    print(f"Tickets written to {args.output}")
     return 0
 
 
