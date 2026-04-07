@@ -2,66 +2,78 @@
 
 ## Purpose
 
-Use this procedure when SecPipe-CloudOps flags a public storage bucket in AWS, Azure, GCP, or OCI.
+Use this SOP when SecPipe-CloudOps raises a `Public storage bucket` finding for AWS S3, GCP Cloud Storage, Azure storage, or OCI Object Storage.
 
-## Scope
+## When to Use This SOP
 
-- Public object storage exposure
-- Buckets containing internal, customer, or backup data
-- Production, staging, and development environments
+Use this runbook when the triage finding shows:
 
-## Trigger
+- `classification: storage_exposure`
+- `issue_type: Public storage bucket`
+- `workflow_stage: triage`
 
-Typical finding title:
+Typical finding:
 
-`[AWS] Public storage bucket on arn:aws:s3:::customer-export-prod`
+`[AWS] Public storage bucket on S3 Bucket arn:aws:s3:::customer-export-prod`
 
-Typical severity:
+## Analyst Intake Checklist
 
-- `critical` for production buckets with sensitive data exposure
-- `medium` or `high` for non-production exposure depending on the content
-
-## Triage Steps
-
-1. Confirm the provider, bucket name, environment, and owner team from the finding.
-2. Validate whether the bucket is intentionally public.
-3. Review the finding details and compare them to the provider policy or ACL settings.
-4. Check whether the bucket contains sensitive, internal-only, or customer-related data.
-5. Determine whether the exposure is current or was already corrected.
+1. Confirm provider, resource ID, environment, severity, priority, and owner team from the SecPipe-CloudOps finding.
+2. Check whether the bucket is expected to be public for a valid business reason.
+3. Review the finding details and recommended action in the triage output.
+4. Identify whether the bucket contains customer, internal, backup, or test data.
+5. Open or update the remediation ticket before requesting owner action.
 
 ## Evidence to Review
 
-- Bucket access policy
-- Public access block or equivalent control
-- Object ACL settings if used
-- Recent storage configuration changes
-- Data classification or project notes
+- Bucket policy or access policy
+- Public access block or equivalent provider control
+- ACL settings if the provider still uses them
+- Recent configuration changes
+- Data classification notes
+- Existing exceptions or approved public-sharing cases
 
-## Containment
+## Triage Decision
 
-1. Remove anonymous or overly broad public access.
-2. Enable the provider's public access protection control where available.
-3. If business access is still required, move public content into a separate approved bucket.
+Treat the finding as confirmed when:
 
-## Remediation
+- Public access is currently enabled
+- The bucket stores data that should not be public
+- There is no approved exception documented by the owner team
 
-1. Apply least-privilege bucket policy changes.
-2. Confirm the correct sharing model with the application or data owner.
-3. Review recent access logs if exposure involved sensitive data.
-4. Update the remediation ticket with the final configuration change.
+Treat the finding as informational only when:
 
-## Escalation
+- The bucket is intentionally public
+- The data is approved for public hosting
+- The owner confirms the configuration and documents the decision
 
-- `P1` or production customer data exposure: page the owning team and notify the cloud security lead.
-- Non-production exposure: route to the owning team and track through the next remediation cycle.
+## Containment Actions
+
+1. Remove anonymous or broad public access where safe to do so.
+2. Enable the provider control that blocks public access by default.
+3. If public hosting is still needed, separate approved public content from internal data.
+
+## Remediation Actions
+
+1. Apply least-privilege policy changes.
+2. Confirm the intended sharing model with the application or data owner.
+3. Review storage access logs if sensitive data may have been exposed.
+4. Record the final change in the remediation ticket.
+5. Link the ticket back to this SOP if the issue required manual triage.
+
+## Escalation Guidance
+
+- `P1` or production sensitive data exposure: page the owner team and notify the cloud security lead.
+- `P2` production exposure: route immediately and require acknowledgement.
+- Non-production exposure: track through the normal remediation queue unless sensitive data is involved.
 
 ## Closure Criteria
 
-- Public access has been removed or formally approved
-- The owning team confirms the final bucket configuration
-- The remediation ticket is updated with the change reference
-- Any follow-up documentation has been linked
+- Public exposure has been removed or formally approved
+- The owning team confirms the final configuration
+- The remediation ticket includes change details and closure notes
+- Any exception or business justification is documented
 
-## Notes
+## Example Closure Note
 
-Do not assume a public bucket is always malicious. Some buckets are intentionally public. The goal is to verify intent, reduce unnecessary exposure, and document the final state.
+`Public read access removed from arn:aws:s3:::customer-export-prod. Block Public Access enabled. Owner confirmed bucket is internal-only. Ticket closed after validation.`

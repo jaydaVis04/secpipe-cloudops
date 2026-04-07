@@ -1,20 +1,24 @@
 # Remediation Ticket Template
 
-Use this template when documenting a SecPipe-CloudOps remediation task in a ticketing system or internal tracker.
+Use this template when creating or updating a SecPipe-CloudOps remediation ticket in an internal tracker.
 
 ## Required Fields
 
 - **Title:** `[Provider] Issue Type on Resource ID`
-- **Provider:** AWS | Azure | GCP | OCI
-- **Resource ID:** Full resource identifier when available
+- **Provider:** `AWS` | `Azure` | `GCP` | `OCI`
+- **Resource ID:** Full resource identifier
+- **Resource Type:** Example: `S3 Bucket`
 - **Issue Type:** Example: `Public storage bucket`
 - **Severity:** `critical` | `high` | `medium` | `low`
 - **Priority:** `P1` | `P2` | `P3` | `P4`
-- **Owner Team:** Team currently responsible for remediation
+- **Classification:** Example: `storage_exposure`
+- **Service Category:** `storage` | `network` | `identity` | `configuration`
+- **Owner Team:** Current remediation owner
+- **Owner Queue:** Team or queue label used for routing
 - **Environment:** `production` | `staging` | `development`
-- **Description:** Analyst summary of the issue and why it matters
+- **Description:** Analyst summary of the issue and risk
 - **Recommended Action:** Immediate next step for the owner
-- **Status:** `Open`, `In Progress`, `Blocked`, or `Closed`
+- **Status:** `Open` | `In Progress` | `Blocked` | `Closed`
 - **Escalation Path:** Who to notify if the issue is not acknowledged
 
 ## Example
@@ -25,13 +29,21 @@ Use this template when documenting a SecPipe-CloudOps remediation task in a tick
 
 **Resource ID:** `arn:aws:s3:::customer-export-prod`
 
+**Resource Type:** S3 Bucket
+
 **Issue Type:** Public storage bucket
 
 **Severity:** critical
 
 **Priority:** P1
 
+**Classification:** storage_exposure
+
+**Service Category:** storage
+
 **Owner Team:** data-platform
+
+**Owner Queue:** data-platform-aws
 
 **Environment:** production
 
@@ -46,6 +58,6 @@ Use this template when documenting a SecPipe-CloudOps remediation task in a tick
 ## Analyst Notes
 
 - Attach the SecPipe-CloudOps finding or output record
-- Link the matching SOP if one exists
+- Link the matching SOP or KB article
 - Record how owner routing was determined
 - Update the ticket after validation and after remediation

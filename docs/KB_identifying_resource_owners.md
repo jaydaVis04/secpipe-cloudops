@@ -2,46 +2,50 @@
 
 ## Purpose
 
-Use this guide when a SecPipe-CloudOps finding needs to be routed to the correct owner team.
+Use this guide when a SecPipe-CloudOps finding needs to be routed to the correct remediation owner.
 
-## Primary Sources
+## Primary Routing Order
 
 Check these sources in order:
 
-1. `owner_team` already attached to the finding
+1. `owner_team` already attached to the triage finding
 2. Resource naming convention
 3. Cloud tag or label metadata
-4. Existing ticket history
-5. Team runbooks or service inventory
+4. Previous ticket history
+5. Team runbooks, service inventory, or project notes
 
 ## Practical Routing Rules
 
-- Storage buckets used for exports or data sharing usually route to the data or application platform team.
-- Security groups, firewall rules, NSGs, and network path issues usually route to network or infrastructure teams.
-- IAM roles, service accounts, and role assignments usually route to identity, platform, or DevOps teams depending on ownership.
-- Backup-related resources usually route to infrastructure or backup engineering.
+- Storage buckets used for exports, analytics, or shared application data usually route to the data or application platform team.
+- Security groups, firewall rules, NSGs, security lists, and pathing issues usually route to network or infrastructure teams.
+- IAM roles, service accounts, policies, and role assignments usually route to identity, platform, or DevOps teams.
+- Backup, archive, or disaster recovery resources usually route to infrastructure or backup engineering.
+
+## Environment-Based Guidance
+
+- `production`: prefer confirmed ownership before closing triage
+- `staging`: provisional routing is acceptable if the change is low risk
+- `development`: route to the team operating the workload or deployment automation
 
 ## When Ownership Is Unclear
 
-1. Check the environment first.
-2. Review the resource name for application or team identifiers.
-3. Search existing documentation for the project or subscription.
-4. Route to the platform team if the application owner cannot be confirmed.
-5. Note in the ticket that ownership is provisional.
+1. Start with the environment and resource type.
+2. Review resource names for application, business unit, or team markers.
+3. Check whether the issue matches a standard functional owner, such as network or identity.
+4. Use the platform team as the provisional owner if no application owner can be confirmed.
+5. Record in the ticket that the routing is provisional.
 
 ## Escalation Guidance
 
-- `production` plus unclear ownership: escalate to cloud security or the platform lead.
-- Repeated unresolved routing failures: raise as a process gap, not only a technical issue.
+- `production` plus unclear ownership: escalate to cloud security or the platform lead
+- repeated unresolved routing failures: raise as a process gap and document it in the ticket
 
-## Good Ticket Notes
+## What to Record in the Ticket
 
-Document:
-
-- Why the current owner was chosen
-- Which sources were checked
-- Whether the routing is confirmed or provisional
-- What follow-up is needed if ownership changes
+- why the current owner was chosen
+- which routing sources were checked
+- whether ownership is confirmed or provisional
+- what follow-up is required if ownership changes
 
 ## Example
 
@@ -55,4 +59,4 @@ Suggested owner:
 
 Reason:
 
-The issue affects NSG rules and cross-subnet traffic controls, which are normally managed by the network security function.
+The issue affects NSG rules and approved management paths, which normally belong to the network security function.
