@@ -102,8 +102,20 @@ class Pipeline:
         """
         path = Path(path)
         with open(path, "r") as f:
-            config = yaml.safe_load(f)
-        return cls(config.get("pipeline", config))
+            config = yaml.safe_load(f) or {}
+
+        if not isinstance(config, dict):
+            raise ValueError("Pipeline config file must contain a YAML mapping")
+
+        pipeline_metadata = config.get("pipeline", {})
+        if isinstance(pipeline_metadata, dict):
+            merged_config = {
+                **pipeline_metadata,
+                **{key: value for key, value in config.items() if key != "pipeline"},
+            }
+            return cls(merged_config)
+
+        return cls(config)
     
     def ingest(
         self,
