@@ -1,46 +1,90 @@
 [
   {
     "provider": "AWS",
-    "resource_id": "s3-media-assets-demo",
+    "resource_id": "arn:aws:s3:::customer-export-prod",
     "resource_type": "S3 Bucket",
-    "issue_type": "Public Bucket",
-    "severity": "High",
-    "owner_team": "media-platform-team",
+    "issue_type": "Public storage bucket",
+    "severity": "critical",
+    "owner_team": "data-platform",
     "environment": "production",
-    "details": "Bucket allows public read access and may expose sensitive media assets.",
-    "recommended_action": "Block public access, review bucket policy, and confirm intended sharing settings."
+    "details": "The bucket policy allows public read access to exported customer data snapshots. Public access block is not fully enabled.",
+    "recommended_action": "Enable S3 Block Public Access, remove anonymous access from the bucket policy, and verify whether any data exposure occurred."
   },
   {
-    "provider": "Azure",
-    "resource_id": "nsg-prod-web-01",
-    "resource_type": "NSG",
-    "issue_type": "SSH Open to Internet",
-    "severity": "High",
-    "owner_team": "network-security-team",
+    "provider": "AWS",
+    "resource_id": "sg-0c42d1a9b7f3e1a22",
+    "resource_type": "Security Group",
+    "issue_type": "SSH open to the internet",
+    "severity": "high",
+    "owner_team": "cloud-infrastructure",
     "environment": "production",
-    "details": "Inbound rule allows TCP/22 from 0.0.0.0/0.",
-    "recommended_action": "Restrict SSH to approved admin IP ranges or remove external access."
+    "details": "Inbound TCP/22 is allowed from 0.0.0.0/0 on a production administrative security group attached to an EC2 bastion host.",
+    "recommended_action": "Restrict SSH access to approved administrator IP ranges or replace direct SSH exposure with a managed access path."
   },
   {
     "provider": "GCP",
-    "resource_id": "svc-build-automation",
+    "resource_id": "projects/secpipe-dev/serviceAccounts/ci-deployer@secpipe-dev.iam.gserviceaccount.com",
     "resource_type": "Service Account",
-    "issue_type": "Excessive IAM Permissions",
-    "severity": "Medium",
-    "owner_team": "devops-team",
+    "issue_type": "Overly broad service account permissions",
+    "severity": "high",
+    "owner_team": "devops",
     "environment": "development",
-    "details": "Service account has broad project-level permissions beyond its job function.",
-    "recommended_action": "Reduce role scope according to least privilege and review account usage."
+    "details": "The CI deployment service account has roles/editor at the project level, allowing broad modification of resources outside its deployment scope.",
+    "recommended_action": "Replace broad project roles with scoped roles required for deployment only and review recent usage for unnecessary actions."
+  },
+  {
+    "provider": "GCP",
+    "resource_id": "projects/secpipe-prod/global/firewalls/allow-rdp-admin",
+    "resource_type": "VPC Firewall Rule",
+    "issue_type": "RDP exposed publicly",
+    "severity": "high",
+    "owner_team": "endpoint-platform",
+    "environment": "production",
+    "details": "The firewall rule allows TCP/3389 from 0.0.0.0/0 to Windows management instances in the production VPC.",
+    "recommended_action": "Limit RDP access to trusted administrator ranges or disable direct public RDP access entirely."
+  },
+  {
+    "provider": "Azure",
+    "resource_id": "/subscriptions/7a1d9f0c/resourceGroups/rg-prod-network/providers/Microsoft.Network/networkSecurityGroups/nsg-app-prod-01",
+    "resource_type": "Network Security Group",
+    "issue_type": "Insecure network path",
+    "severity": "medium",
+    "owner_team": "network-security",
+    "environment": "production",
+    "details": "The NSG permits direct inbound management traffic from an internet-facing subnet to an application subnet instead of routing through the approved jump host segment.",
+    "recommended_action": "Update NSG rules to enforce the approved management path and document the expected VNet traffic flow for the application tier."
+  },
+  {
+    "provider": "Azure",
+    "resource_id": "/subscriptions/7a1d9f0c/resourceGroups/rg-shared-identity/providers/Microsoft.Authorization/roleAssignments/5f2c1a90-41dd-4d61-a245-8e4f308c9c2e",
+    "resource_type": "Role Assignment",
+    "issue_type": "Excessive IAM permissions",
+    "severity": "high",
+    "owner_team": "identity-access",
+    "environment": "production",
+    "details": "A support automation identity has been assigned the Owner role at the subscription scope, exceeding the permissions needed for ticket-based maintenance tasks.",
+    "recommended_action": "Replace the subscription Owner assignment with a least-privilege role set aligned to the automation workflow and confirm emergency access is documented separately."
   },
   {
     "provider": "OCI",
-    "resource_id": "prod-security-list-01",
+    "resource_id": "ocid1.securitylist.oc1.iad.exampleuniqueID",
     "resource_type": "Security List",
-    "issue_type": "RDP Exposed to Internet",
-    "severity": "High",
-    "owner_team": "infra-team",
+    "issue_type": "RDP exposed publicly",
+    "severity": "high",
+    "owner_team": "infrastructure-operations",
     "environment": "production",
-    "details": "TCP/3389 is exposed publicly, increasing remote access risk.",
-    "recommended_action": "Limit RDP access to trusted IP space or remove public exposure entirely."
+    "details": "The OCI security list allows inbound TCP/3389 from 0.0.0.0/0 to a subnet hosting administrative Windows instances.",
+    "recommended_action": "Restrict RDP exposure to trusted source ranges or remove the public rule and use a controlled administrative access method."
+  },
+  {
+    "provider": "OCI",
+    "resource_id": "ocid1.bucket.oc1.phx.examplearchivebucket",
+    "resource_type": "Object Storage Bucket",
+    "issue_type": "Public storage bucket",
+    "severity": "medium",
+    "owner_team": "backup-engineering",
+    "environment": "staging",
+    "details": "The bucket is configured for public object access to simplify partner testing, but it currently stores internal backup validation files.",
+    "recommended_action": "Disable public object access, move partner test content to a separate bucket, and confirm only approved data remains in staging storage."
   }
 ]
