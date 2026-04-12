@@ -331,6 +331,7 @@ def cmd_tickets(args) -> int:
     """Generate structured remediation tickets from findings."""
     import json
 
+    from secpipe.outputs.markdown import MarkdownOutput
     from secpipe.schema import Finding
     from secpipe.tickets import TicketGenerator
 
@@ -347,8 +348,18 @@ def cmd_tickets(args) -> int:
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump([ticket.to_dict() for ticket in tickets], f, indent=2)
 
+    markdown_path = args.output.with_suffix(".md")
+    MarkdownOutput(
+        {
+            "path": str(markdown_path),
+            "title": "SecPipe-CloudOps Triage Summary",
+            "include_evidence": False,
+        }
+    ).write(findings)
+
     print(f"Generated {len(tickets)} remediation ticket(s)")
     print(f"Tickets written to {args.output}")
+    print(f"Human-readable summary written to {markdown_path}")
     return 0
 
 

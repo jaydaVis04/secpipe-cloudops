@@ -78,13 +78,13 @@
   },
   {
     "provider": "OCI",
-    "resource_id": "ocid1.bucket.oc1.phx.examplearchivebucket",
-    "resource_type": "Object Storage Bucket",
-    "issue_type": "Public storage bucket",
+    "resource_id": "ocid1.policy.oc1.phx.exampleidentitypolicy",
+    "resource_type": "IAM Policy",
+    "issue_type": "Excessive IAM permissions",
     "severity": "medium",
-    "owner_team": "backup-engineering",
+    "owner_team": "identity-access",
     "environment": "staging",
-    "details": "The bucket is configured for public object access to simplify partner testing, but it currently stores internal backup validation files.",
-    "recommended_action": "Disable public object access, move partner test content to a separate bucket, and confirm only approved data remains in staging storage."
+    "details": "A staging operations group can manage all resources in the tenancy compartment even though its normal work is limited to compute restart and instance inspection tasks.",
+    "recommended_action": "Replace the broad manage policy with narrower verbs for the required resource families and confirm which maintenance actions actually need to remain."
   }
 ]

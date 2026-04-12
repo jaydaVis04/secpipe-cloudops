@@ -4,9 +4,11 @@ Ticket generation tests.
 
 import json
 from datetime import datetime
+from types import SimpleNamespace
 
 from secpipe.schema import Finding, Severity
 from secpipe.tickets import TicketGenerator
+from secpipe.cli import cmd_tickets
 
 
 class TestTicketGenerator:
@@ -131,3 +133,42 @@ class TestTicketGenerator:
         assert data["service_category"] == "network"
         assert data["status"] == "Open"
         json.dumps(data)
+
+    def test_cmd_tickets_writes_markdown_summary(self, tmp_path):
+        """Should write a human-readable markdown summary next to ticket JSON."""
+        findings_path = tmp_path / "triage_findings.jsonl"
+        output_path = tmp_path / "remediation_tickets.json"
+
+        finding = Finding(
+            detection_name="cloud_security_triage",
+            title="[AWS] Public storage bucket on arn:aws:s3:::customer-export-prod",
+            description="Public storage bucket detected on a production resource.",
+            severity=Severity.CRITICAL,
+            first_seen=datetime.now(),
+            recommendations=["Block public access immediately."],
+            extra={
+                "provider": "AWS",
+                "resource_id": "arn:aws:s3:::customer-export-prod",
+                "resource_type": "S3 Bucket",
+                "issue_type": "Public storage bucket",
+                "priority": "P1",
+                "owner_team": "data-platform",
+                "owner_queue": "data-platform-aws",
+                "environment": "production",
+                "classification": "storage_exposure",
+                "service_category": "storage",
+            },
+        )
+
+        findings_path.write_text(finding.to_json() + "\n", encoding="utf-8")
+
+        result = cmd_tickets(
+            SimpleNamespace(findings=findings_path, output=output_path)
+        )
+
+        assert result == 0
+        assert output_path.exists()
+        assert output_path.with_suffix(".md").exists()
+        markdown_content = output_path.with_suffix(".md").read_text(encoding="utf-8")
+        assert "SecPipe-CloudOps Triage Summary" in markdown_content
+        assert "Public storage bucket" in markdown_content
