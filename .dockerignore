@@ -10,3 +10,4 @@ htmlcov
 .coverage
 tests
 secpipe.egg-info
+output

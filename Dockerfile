@@ -7,11 +7,11 @@ COPY pyproject.toml README.md ./
 COPY secpipe ./secpipe
 COPY cloud ./cloud
 COPY docs ./docs
-COPY output ./output
 COPY samples ./samples
 COPY config.yaml.example ./
 
 RUN pip install --no-cache-dir .
+RUN mkdir -p output
 
 ENTRYPOINT ["python", "-m", "secpipe.cli"]
 CMD ["--help"]

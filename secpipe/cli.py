@@ -245,6 +245,7 @@ def cmd_ingest(args) -> int:
     from secpipe.outputs.jsonl import JSONLOutput
     import json
     
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
         for event in pipeline.events:
             f.write(event.to_json() + "\n")
@@ -287,6 +288,7 @@ def cmd_detect(args) -> int:
     findings = engine.run(events)
     
     # Write findings
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
         for finding in findings:
             f.write(finding.to_json() + "\n")
@@ -318,6 +320,7 @@ def cmd_triage(args) -> int:
     )
     findings = engine.run(events)
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
         for finding in findings:
             f.write(finding.to_json() + "\n")
