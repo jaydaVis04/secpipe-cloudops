@@ -99,7 +99,9 @@ class AuthLogParser(Parser):
     TIMESTAMP_PATTERN = re.compile(
         r"^(?P<timestamp>"
         r"(?:\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})|"  # Jan  1 00:00:00
-        r"(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})"   # ISO format
+        r"(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"     # ISO format
+        r"(?:\.\d+)?"                                 # optional fractional seconds
+        r"(?:Z|[+-]\d{2}:\d{2})?)"                    # optional timezone
         r")\s+(?P<host>\S+)\s+(?P<rest>.+)"
     )
     
@@ -114,7 +116,7 @@ class AuthLogParser(Parser):
         try:
             # ISO format
             if "T" in ts_str:
-                return datetime.fromisoformat(ts_str)
+                return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
             
             # Traditional syslog format (Jan  1 00:00:00)
             # Add year since it's not in the timestamp
